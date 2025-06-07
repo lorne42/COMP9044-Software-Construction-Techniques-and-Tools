@@ -1,0 +1,45 @@
+#!/bin/dash
+if [ ! -e .pushy/cur_branch ]; then
+	echo "$1" > .pushy/cur_branch
+	cp -r .pushy/rep .pushy/branches/master/
+else
+	cur_branch=$(head -n 1 .pushy/cur_branch)
+	if [ ! -d ".pushy/branches/$cur_branch" ]; then
+		echo "$cur_branch not found"
+		exit 1
+	fi
+	rm -r ".pushy/branches/$cur_branch/rep"
+	cp -r .pushy/rep ".pushy/branches/$cur_branch/"
+fi
+branch=".pushy/branches/$1"
+if [ -d "$branch" ]; then
+	#
+
+	diff_output=$(diff -rq .pushy/rep/cur "$branch/rep/cur" | grep "Only in .pushy/rep/cur")		
+	IFS=' ' 
+	for line in $diff_output; do
+    		file=$(echo "$line" | cut -d ' ' -f 4)
+    		rm -rf "./$file"
+	done
+	#
+	
+	rm -r .pushy/rep
+	cp -r "$branch/rep" .pushy/
+
+	##
+	for file in .pushy/rep/cur/*; do
+
+		if [ -f "$file" ]; then
+    			cp -r "$file"  ./
+		fi
+	done
+	##
+	
+	rm .pushy/cur_branch
+	echo "$1" > .pushy/cur_branch
+	echo "Switched to branch '$1'"
+else
+	echo "$0: error: unknown branch '$1'"
+	exit 1
+fi
+exit 0

@@ -1,0 +1,77 @@
+#!/bin/dash
+force=false
+cached=false
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --force)
+            force=true
+            shift
+            ;;
+        --cached)
+            cached=true
+            shift
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
+if [ $# -eq 0 ]; then
+    echo "usage: pushy-rm [--force] [--cached] <filenames>"
+    exit 1
+fi
+remove_file() {
+    INDEX=".pushy/index"
+    CUR=".pushy/rep/cur"
+    local filename
+    filename=$(basename "$1")
+    if [ ! -e "$INDEX/$filename" ]; then
+	    echo "pushy-rm: error: '$filename' is not in the pushy repository"
+	    exit 1
+    fi
+    if [ "$cached" = true ]; then
+	    if [ "$force" = true ]; then
+	    	    rm -f "$INDEX/$filename"
+		    exit 0
+	    fi
+	    if ! cmp -s "$INDEX/$filename" "$filename" && ! cmp -s "$INDEX/$filename" "$CUR/$filename" ; then
+		    echo "pushy-rm: error: '$filename' in index is different to both the working file and the repository"
+		    exit 1
+	    fi
+	    rm -f "$INDEX/$filename"
+	    
+    elif [ "$force" = true ]; then
+
+	    rm -f "$filename" "$INDEX/$filename" 
+	    grep -vx "$filename" .pushy/add_record > temp_file && mv temp_file .pushy/add_record
+	    rm -f temp_file
+	    
+
+    else
+	    if ! cmp -s "$INDEX/$filename" "$filename" && ! cmp -s "$INDEX/$filename" "$CUR/$filename" ; then
+		    echo "pushy-rm: error: '$filename' in index is different to both the working file and the repository"
+		    exit 1
+	    fi
+	    if [ ! -e "$CUR/$filename" ]; then
+		    echo "pushy-rm: error: '$filename' has staged changes in the index"
+		    exit 1
+	    fi
+	    if ! cmp -s "$CUR/$filename" "$INDEX/$filename"; then
+		    echo "pushy-rm: error: '$filename' has staged changes in the index"
+		    exit 1
+	    fi
+	    if ! cmp -s "$CUR/$filename" "$filename"; then
+		    echo "pushy-rm: error: '$filename' in the repository is different to the working file"
+		    exit 1
+	    fi
+	    rm -f "$filename" "$INDEX/$filename"
+    fi
+}
+
+for file in "$@"; do
+	remove_file "$file"
+done
+
+exit 0

@@ -1,0 +1,83 @@
+#!/bin/dash
+status=".pushy/status"
+if [ ! -e "$status" ]; then
+	touch "$status"
+fi
+true > "$status"
+while IFS= read -r filename; do
+	in_file=".pushy/index/$filename"
+	rep_file=".pushy/rep/cur/$filename"
+	work_file="./$filename"
+	if [ -e "$work_file" ]; then
+	    	if [ -e "$in_file" ]; then
+			if [ -e "$rep_file" ]; then
+				if ! cmp -s "$work_file" "$in_file" && cmp -s "$in_file" "$rep_file"; then
+					echo "$filename - file changed, changes not staged for commit" >> "$status"
+					continue
+				fi
+				if ! cmp -s "$work_file" "$in_file" && ! cmp -s "$in_file" "$rep_file"; then
+					echo "$filename - file changed, different changes staged for commit" >> "$status"
+					continue
+				fi
+
+				if cmp -s "$in_file" "$rep_file" && cmp -s "$work_file" "$in_file"; then
+					echo "$filename - same as repo" >> "$status"
+					continue
+				else
+    					echo "$filename - file changed, changes staged for commit" >> "$status"
+					continue
+				fi
+			else
+				if ! cmp -s "$work_file" "$in_file"; then
+					echo "$filename - added to index, file changed" >> "$status"
+					continue
+				fi
+				echo "$filename - added to index" >> "$status"
+				continue
+			fi
+		else
+			if [ -s "$rep_file" ]; then
+				echo "$filename - deleted from index" >> "$status"
+			else
+				echo "$filename - untracked" >> "$status"
+			fi
+
+		fi
+	else
+		if [ -e "$in_file" ];then
+			if [ ! -e "$rep_file" ]; then
+				echo "$filename - added to index, file deleted" >> "$status"
+				continue
+			else	
+				if cmp -s "$in_file" "$rep_file"; then
+					echo "$filename - file deleted" >> "$status"
+					continue
+				else
+					echo "$filename - file deleted, changes staged for commit" >> "$status"
+					continue
+				fi
+			fi
+		else
+			if [ ! -e "$rep_file" ]; then
+				continue
+			else
+				echo "$filename - file deleted, deleted from index" >> "$status"
+				continue
+			fi
+		fi
+
+	fi
+done < ".pushy/add_record"
+if ls ./* >/dev/null 2>&1; then
+	for file in ./* 
+	do
+		wfilename=$(basename "$file")
+		if [ ! -e ".pushy/index/$wfilename" ] && ! grep -x "$wfilename" .pushy/add_record >/dev/null; then
+			
+			echo "$wfilename - untracked" >> "$status"
+		fi
+	done
+fi
+
+sort "$status"
+exit 0

@@ -1,0 +1,16 @@
+#!/bin/dash
+if [ "$#" != 0 ];then
+	echo "usage: pushy-init"
+	exit 1
+fi
+
+if [ -d ".pushy" ];then
+	echo "pushy-init: error: .pushy already exists"
+else
+	mkdir -p .pushy/index
+	mkdir -p .pushy/rep
+	touch .pushy/add_record
+	touch .pushy/status
+	echo "Initialized empty pushy repository in .pushy"
+fi
+exit 0

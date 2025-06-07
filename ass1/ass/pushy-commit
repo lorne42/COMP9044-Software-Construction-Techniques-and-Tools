@@ -1,0 +1,66 @@
+#!/bin/dash
+
+if [  $# -eq 3 ] && { [ "$2" != "-m" ] || [ "$1" != "-a" ]; }; then
+	echo "usage: $0 [-a] -m commit-message"
+	exit 1
+fi
+if [  $# -eq 2 ] && [ "$1" != "-m" ] ; then
+	echo "usage: $0 [-a] -m commit-message"
+	exit 1
+fi
+CUR=".pushy/rep/cur"
+INDEX=".pushy/index"
+if [ $# -eq 3 ]; then
+	msg=$3
+	for file in ./*;
+	do
+		afilename=$(basename "$file")
+		if [ -f  "$INDEX/$afilename" ]; then
+			rm "$INDEX/$afilename"
+		fi
+		cp "$file" "$INDEX"
+	done
+else
+	msg=$2
+fi
+
+mkdir -p .pushy/rep/cur
+if diff -rq "$INDEX" "$CUR" >/dev/null; then
+	echo "nothing to commit"
+	exit 1
+fi
+cur_count=$(find "$CUR" -type f | wc -l)
+if [ "$cur_count" -gt 0 ]; then
+	rm "$CUR"/*
+fi
+
+num=0
+while [ -d .pushy/rep/".$num" ];do
+	num=$((num+1))
+done
+mkdir .pushy/rep/".$num"
+
+index_count=$(find "$INDEX" -type f | wc -l)
+if [ "$index_count" -gt 0 ]; then
+	cp -r "$INDEX"/* "$CUR"
+	cp -r "$INDEX"/* .pushy/rep/".$num"
+	if [ -d .pushy/branches ]; then
+		for branch_dir in .pushy/branches/*; do
+			cp -r .pushy/rep/".$num"  "$branch_dir/rep/"
+		done
+	fi
+fi
+
+if [ ! -s .pushy/log ]; then
+	echo "$num $msg" > .pushy/log
+else
+	sed -i "1i$num $msg" .pushy/log
+fi
+branches=".pushy/branches"
+if [ ! -d "$branches" ]; then
+    mkdir "$branches"
+    mkdir "$branches/master"
+    cp -r .pushy/rep "$branches"/master/
+fi
+echo "Committed as commit $num"
+exit 0

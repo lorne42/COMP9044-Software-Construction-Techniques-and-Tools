@@ -1,0 +1,36 @@
+#!/bin/dash
+pattern=".*:[[:alnum:]._-]+$"
+if [ $# -ne 1 ]; then
+	echo "usage: pushy-show <commit>:<filename>"
+	exit 1
+fi
+if echo "$1" | grep -q '^[a-zA-Z]\+$'; then
+    echo "pushy-show: error: invalid object $1"
+    exit 1
+fi
+if ! echo "$1" | grep -qE "$pattern"; then
+	echo "usage: pushy-show <commit>:<filename>"
+	exit 1
+fi
+commit=$(echo "$1" | grep -o '^[^:]*' | sed 's/^://')
+filename=$(echo "$1" | grep -o ':.*' | sed 's/^://')
+if [ ! "$commit" ]; then
+	if [ ! -f .pushy/index/"$filename" ]; then
+		echo "pushy-show: error: '$filename' not found in index"
+		exit 1
+	else
+		cat .pushy/index/"$filename"
+	fi
+else
+	if [ ! -d .pushy/rep/".$commit" ]; then
+		echo "pushy-show: error: unknown commit '$commit'"
+		exit 1
+	fi
+	if [ ! -f .pushy/rep/".$commit"/"$filename" ]; then
+		echo "pushy-show: error: '$filename' not found in commit $commit"
+		exit 1
+	else
+		cat .pushy/rep/".$commit"/"$filename"
+	fi
+fi
+exit 0

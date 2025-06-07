@@ -1,0 +1,29 @@
+#!/bin/dash
+if [ $# -eq 0 ]; then
+    echo "Usage: $0 <filenames>"
+    exit 1
+fi
+INDEX=".pushy/index"
+if [ ! -d "$INDEX" ]; then
+    echo "$0: error: pushy repository directory .pushy not found"
+    exit 1
+fi
+for file in "$@"
+do
+	if [ -e "$file" ]; then
+		if [ -e "$INDEX/$file" ]; then
+			rm "$INDEX/$file"
+		fi
+		cp "$file" "$INDEX"
+		if  ! grep -qx "$file" .pushy/add_record; then
+			echo "$file" >> .pushy/add_record
+		fi
+	else
+		if [ -e "$INDEX/$file" ]; then
+			rm "$INDEX/$file"
+		else
+			echo "$0: error: can not open '$file'"
+		fi
+	fi
+done
+exit 0
